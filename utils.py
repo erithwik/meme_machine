@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 import pickle
 import string
+import numpy as np
 
 '''
 This takes in the list of phrases, cleans them by making them lowercase,
@@ -79,4 +80,9 @@ def index_to_words(list_of_indices, idx2word):
 	# Just to minimize the function
 	return [idx2word[i] for i in list_of_indices]
 
-
+'''
+Creates noise of a certain shape [m,n]
+'''
+def sample_Z(m, n):
+	# just to minimize
+    return np.random.uniform(-1, 1, size=[m, n])

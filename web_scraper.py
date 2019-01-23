@@ -116,9 +116,9 @@ def main():
 
 	#TODO <-- proces the images
 	'''
-	- Make the random noise generator 
-	- Figure out how to make the LSTM and the model
-	- 
+	- Design the model
+	- Preproces the input
+	- Run the model on the test set
 	'''
 
 main()
