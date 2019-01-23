@@ -32,6 +32,8 @@ def model_creator():
 	visible_noise = Input((input_noise_size,))
 	first_noise_hidden = Dense(25, activation = "relu")(visible_noise)
 
+	visible_input = Input((input_words_image,))
+
 	concatenated = Concatenate([second_image_hidden, first_noise_hidden])
 
 	first_hidden = Dense(50)(concatenated)
