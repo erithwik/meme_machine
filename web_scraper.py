@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
+# This scrapes the internet to get memes based on the parameters given
+# It returns the a list of links to each specific meme (links), links to
+# the images of each meme (images), and a number of phrases that work with
+# that meme (phrases) (This is based on the num_per_meme variable)
 def create_data(num_pages = 1, num_per_meme = 1): # returns links, images, phrases
 
 	# link hypervariables
@@ -58,6 +62,8 @@ def create_data(num_pages = 1, num_per_meme = 1): # returns links, images, phras
 
 	return links, images, phrases
 
+# This takes in the list of links to the images and saves the images to a local
+# file and returns the number of images that it saved
 def save_images(links): # returns the number of images
 	starting_text = "images/image_"
 	for index, link in enumerate(links):
@@ -72,6 +78,9 @@ def save_images(links): # returns the number of images
 				handle.write(block)
 	return len(links)
 
+# This reads the images in the local file and puts them all in a numpy array
+# The images are black-and-white (one dimensional) and the dimensions of the
+# output are (num_memes * num_per_meme, 60, 60, 1)
 def include_images(num_memes, num_per_meme): # returns numpy array of images
 	image_files = []
 	for i in range(num_memes):
@@ -82,6 +91,7 @@ def include_images(num_memes, num_per_meme): # returns numpy array of images
 			image_files.append(image)
 	return np.array(image_files)
 
+# This is a simple function to view the images using matplotlib
 def view_all_images(num_memes, num_per_meme, images): # makes a numpy image of the images
 	for i in range(num_memes):
 		for j in range(num_per_meme):
@@ -99,11 +109,6 @@ def main():
 
 	word2idx, idx2word = dictionary_creator(vocabulary)
 
-	# num_memes = 15
-	# num_per_meme = 15
-
-	# images = include_images(num_memes, num_per_meme)
-
 	with open("data_storage/train_images_basic.pickle", "rb") as f:
 		images = pickle.load(f)
 
@@ -111,9 +116,9 @@ def main():
 
 	#TODO <-- proces the images
 	'''
-	- turn them from rgb to black and white images
-	- multiply them by the number of memes per meme_type
-	- save them list_of_images (dimensions = [15 meme_types * 15 per meme, 60, 60, 1])in a pickle folder
+	- Make the random noise generator 
+	- Figure out how to make the LSTM and the model
+	- 
 	'''
 
 main()
