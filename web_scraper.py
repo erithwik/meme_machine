@@ -121,4 +121,5 @@ def main():
 	- Run the model on the test set
 	'''
 
-main()
+if __name__ == "__main__":
+	main()

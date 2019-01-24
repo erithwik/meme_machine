@@ -85,4 +85,4 @@ Creates noise of a certain shape [m,n]
 '''
 def sample_Z(m, n):
 	# just to minimize
-    return np.random.uniform(-1, 1, size=[m, n])
+	return np.random.uniform(-1, 1, size=[m, n])
