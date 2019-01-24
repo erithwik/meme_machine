@@ -6,6 +6,7 @@ from utils import *
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+import nltk
 
 # This scrapes the internet to get memes based on the parameters given
 # It returns the a list of links to each specific meme (links), links to
@@ -99,7 +100,9 @@ def view_all_images(num_memes, num_per_meme, images): # makes a numpy image of t
 			plt.imshow(np.reshape(images[i*num_memes + j], [60,60]), cmap = "gray")
 	plt.show()
 
-def main():
+# This calls all the relavent functions to create a set of information to be 
+# sent to the keras_model.py for the final run
+def initializer():
 	with open('data_storage/train_basic.pickle', 'rb') as f:
 	    links, image_links, phrases = pickle.load(f)
 
@@ -112,11 +115,15 @@ def main():
 	with open("data_storage/train_images_basic.pickle", "rb") as f:
 		images = pickle.load(f)
 
-	print(np.shape(images))
+	with open("data_storage/word_model.pickle", "rb") as f:
+		model = pickle.load(f)
 
+	vocab_embeddings = make_numpy_embedding_list(len(vocabulary), 200, word2idx, model)
+
+	return links, cleaned, images, vocabulary, word2idx, idx2word, vocab_embeddings, model
+	
 	#TODO <-- proces the images
 	'''
-	- Design the model
 	- Preproces the input
 	- Run the model on the test set
 	'''

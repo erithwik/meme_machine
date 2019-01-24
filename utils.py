@@ -83,6 +83,42 @@ def index_to_words(list_of_indices, idx2word):
 '''
 Creates noise of a certain shape [m,n]
 '''
-def sample_Z(m, n):
+def sample_z(m, n):
 	# just to minimize
 	return np.random.uniform(-1, 1, size=[m, n])
+
+'''
+This takes the word2idx and the word2vec model and creates a numpy array 
+of size (num_words, num_embeddings) which holds the information about
+each word.
+'''
+def make_numpy_embedding_list(num_words, num_embeddings, word2idx, model):
+	vocab_set = np.zeros((num_words, num_embeddings))
+
+	for word, i in word2idx.items():
+		try:
+			vector = model[word]
+		except KeyError as e:
+			vector = None
+
+		if vector is not None:
+			vocab_set[i] = vector
+
+	return vocab_set
+
+
+'''
+This pads the curr_list with zeroes to reach max_length
+'''
+def pad_sequences(curr_list, max_length):
+	# just to minimize
+	return curr_list + [0] * (max_length - len(curr_list))
+
+'''
+This returns a list where one index is 1 which corresponds to the y
+value
+'''
+def categorize_variable(variable, vocab_size):
+	ret_list = [0] * vocab_size
+	ret_list[variable] = 1
+	return ret_list
