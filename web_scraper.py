@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import nltk
+from nltk_analysis import *
 
 # This scrapes the internet to get memes based on the parameters given
 # It returns the a list of links to each specific meme (links), links to
@@ -115,18 +116,19 @@ def initializer():
 	with open("data_storage/train_images_basic.pickle", "rb") as f:
 		images = pickle.load(f)
 
-	with open("data_storage/word_model.pickle", "rb") as f:
-		model = pickle.load(f)
+	# with open("data_storage/word_model.pickle", "rb") as f:
+	# 	model = pickle.load(f)
+
+	orig_list = []
+	for phrase in cleaned:
+		for p in phrase:
+			orig_list.append(p)
+
+	model = create_embeddings(orig_list, 200)
 
 	vocab_embeddings = make_numpy_embedding_list(len(vocabulary), 200, word2idx, model)
 
 	return links, cleaned, images, vocabulary, word2idx, idx2word, vocab_embeddings, model
-	
-	#TODO <-- proces the images
-	'''
-	- Preproces the input
-	- Run the model on the test set
-	'''
 
 if __name__ == "__main__":
 	main()

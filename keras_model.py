@@ -6,9 +6,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from web_scraper import create_data
 import pickle
+import keras
 from keras.utils import plot_model
 from utils import *
-
 """
 So first, we need two inputs, an image with size 60*60 and a vector of 10 random 
 numbers (the gaussian distribution) for additional variety. After a certain 
@@ -17,7 +17,8 @@ concatenate them and send them into an LSTM which produces an output.
 """
 
 #hyperparameters
-learning_rate = 1e-3
+add_noise = False
+learning_rate = 0.01
 optimizer = Adam(learning_rate)
 
 input_image_shape = (60,60,1)
@@ -31,7 +32,7 @@ from web_scraper import *
 Creating the data generator (since we are using hella memory, we need 
 a generator)
 '''
-def data_creator(phrases, memes, word2idx, max_length, num_photos_per_batch):
+def data_creator(phrases, memes, word2idx, num_photos_per_batch):
 	# initializes the lists which we will later yield
 	X_image, X_noise, X_captions, y_values = [], [], [], []
 	# creates the counter to get the the num_photos_per_batch before resetting
@@ -45,6 +46,7 @@ def data_creator(phrases, memes, word2idx, max_length, num_photos_per_batch):
 			for meme_phrase in meme_phrases:
 				# you are making a list of numbers relating to the words
 				seq = [word2idx[word] for word in meme_phrase.split(' ') if word in word2idx]
+				sample_z_value = sample_z(1, input_noise_size)[0]
 				# for each of the possible sub_sequences in the sequence of numbers
 				for i in range(len(seq)):
 					# the input sequence is the current words for the LSTM
@@ -57,7 +59,7 @@ def data_creator(phrases, memes, word2idx, max_length, num_photos_per_batch):
 					output_word = categorize_variable(output_word, output_vector_size)
 					# this adds the Xs and ys to the list
 					X_image.append(memes[index])
-					X_noise.append(sample_z(1,input_noise_size)[0])
+					X_noise.append(sample_z_value)
 					X_captions.append(input_sequences)
 					y_values.append(output_word)
 					# increment n for every test example
@@ -65,7 +67,10 @@ def data_creator(phrases, memes, word2idx, max_length, num_photos_per_batch):
 				# if the number of test examples in the current is equal to the limit
 				if n >= num_photos_per_batch:
 					# this yields the batch of Xs and ys
-					yield [X_image, X_noise, X_captions, y_values]
+					if add_noise:
+						yield ([np.array(X_image), np.array(X_noise), np.array(X_captions)], np.array(y_values))
+					else:
+						yield ([np.array(X_image), np.array(X_captions)], np.array(y_values))
 					# this resets the values
 					n = 0
 					X_image, X_noise, X_captions, y_values = [], [], [], []
@@ -79,29 +84,90 @@ def model_creator():
 	visible_image = Input(input_image_shape)
 	flattened = Flatten()(visible_image)
 	first_image_hidden = Dense(256, activation = "relu")(flattened)
+	first_image_hidden = Dropout(0.5)(first_image_hidden)
 	second_image_hidden = Dense(128, activation = "relu")(first_image_hidden)
 
-	visible_noise = Input((input_noise_size,))
-	first_noise_hidden = Dense(128, activation = "relu")(visible_noise)
+	if add_noise:
+		visible_noise = Input((input_noise_size,))
+		first_noise_hidden = Dense(128, activation = "relu")(visible_noise)
 
 	visible_input = Input((input_words_image,))
 	embeddings = Embedding(output_vector_size, embedding_dim, mask_zero=True)(visible_input)
+	embeddings = Dropout(0.5)(embeddings)
 	LSTM_hidden_layer = LSTM(128)(embeddings)
 
-	concatenated = Add()([second_image_hidden, first_noise_hidden, LSTM_hidden_layer])
+	if not add_noise:
+		concatenated = Add()([second_image_hidden, LSTM_hidden_layer])
+	else:
+		concatenated = Add()([second_image_hidden, first_noise_hidden, LSTM_hidden_layer])
 
 	first_hidden = Dense(256, activation = "relu")(concatenated)
+	first_hidden = Dropout(0.5)(first_hidden)
 	output_layer = Dense(output_vector_size, activation = "softmax")(first_hidden)
 
-	model = Model(inputs = [visible_image, visible_noise, visible_input], outputs = output_layer)
+	if add_noise:
+		model = Model(inputs = [visible_image, visible_noise, visible_input], outputs = output_layer)
+	else:
+		model = Model(inputs = [visible_image, visible_input], outputs = output_layer)
 	model.compile(loss = 'categorical_crossentropy', optimizer = optimizer, metrics = ['accuracy'])
 	return model
 
+def predict(image, n, idx2word):
+	orig_lstm = np.zeros((input_words_image,))
+	for i in range(input_words_image):
+		if add_noise:
+			predicted = generator.predict([np.array([image]), np.array([n]), np.array([orig_lstm])])
+		else:
+			predicted = generator.predict([np.array([image]), np.array([orig_lstm])])
+		orig_lstm[i] = np.argmax(predicted[0])
+	
+	return " ".join([idx2word[i] for i in orig_lstm])
+
+def predict_group(amount):
+	for i in range(amount):
+		new_sample_z = sample_z(1, input_noise_size)[0]
+		print(predict(images[i], new_sample_z, idx2word))
+
+class Histories(keras.callbacks.Callback):
+	def on_train_begin(self, logs={}):
+		self.losses = []
+
+	def on_train_end(self, logs={}):
+		return
+
+	def on_epoch_begin(self, epoch, logs={}):
+		predict_group(5)
+		return
+
+	def on_epoch_end(self, epoch, logs={}):
+		self.losses.append(logs.get('loss'))
+		return
+
+	def on_batch_begin(self, batch, logs={}):
+		return
+
+	def on_batch_end(self, batch, logs={}):
+		return
+
 links, cleaned, images, vocabulary, word2idx, idx2word, vocab_embeddings, word2vec_model = initializer()
 
-generator = model_creator()
+generator = model_creator() #the inputs in order are images, noise, and lstm input
+data_generator = data_creator(cleaned, images,word2idx, 128)
 
-output = data_creator(cleaned, images, word2idx, input_words_image, 128)
-output = next(output)
-X_images, X_noise, X_lstm, y_values = np.array(output[0]), np.array(output[1]), np.array(output[2]), np.array(output[3])
+# if add_noise:
+# 	generator.layers[5].set_weights([vocab_embeddings])
+# 	generator.layers[5].trainable = False
+# else:
+# 	generator.layers[4].set_weights([vocab_embeddings])
+# 	generator.layers[4].trainable = False
 
+# print(generator.summary())
+histories = Histories()
+# this takes in a generator and returns the histories of the model
+generator.fit_generator(data_generator, steps_per_epoch = 3000, epochs = 15, callbacks = [histories])
+
+'''
+#TODO
+- create some functions to predict the words given an image and some noise
+- use generator.fit_generator() to fit the model
+'''
