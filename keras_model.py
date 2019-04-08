@@ -1,13 +1,14 @@
+# These are the premade imports
 from keras.layers import *
 from keras.models import *
 from keras.optimizers import Adam
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+
+# There are our imports
 from web_scraper import create_data
 import pickle
-import keras
-from keras.utils import plot_model
 from utils import *
 """
 So first, we need two inputs, an image with size 60*60 and a vector of 10 random 
@@ -20,6 +21,7 @@ concatenate them and send them into an LSTM which produces an output.
 add_noise = False
 learning_rate = 0.01
 optimizer = Adam(learning_rate)
+meme_phrase_per_meme = 15
 
 input_image_shape = (60,60,1)
 input_noise_size = 100
@@ -38,15 +40,17 @@ def data_creator(phrases, memes, word2idx, num_photos_per_batch):
 	# creates the counter to get the the num_photos_per_batch before resetting
 	n = 0
 	while True:
-		# for each meme
-		for index in range(0, len(memes), 15):
+		# for each meme (there are 15 meme phrases per meme)
+		for index in range(0, len(memes), meme_phrase_per_meme):
 			# the phrases for this meme = meme_phrases
-			meme_phrases = phrases[index//15]
+			meme_phrases = phrases[index//meme_phrase_per_meme]
 			# for each phrase in the meme_phrases
 			for meme_phrase in meme_phrases:
+
 				# you are making a list of numbers relating to the words
 				seq = [word2idx[word] for word in meme_phrase.split(' ') if word in word2idx]
 				sample_z_value = sample_z(1, input_noise_size)[0]
+
 				# for each of the possible sub_sequences in the sequence of numbers
 				for i in range(len(seq)):
 					# the input sequence is the current words for the LSTM
@@ -80,6 +84,7 @@ Creating the model. It takes in three inputs, one image of size (60,60,1), one
 noise vector of the length described in the hyperparamters (input_noise_size), and a visible_input of
 size described in the hyperparamters (input_words_image)
 '''
+
 def model_creator():
 	visible_image = Input(input_image_shape)
 	flattened = Flatten()(visible_image)
@@ -97,9 +102,9 @@ def model_creator():
 	LSTM_hidden_layer = LSTM(128)(embeddings)
 
 	if not add_noise:
-		concatenated = Add()([second_image_hidden, LSTM_hidden_layer])
+		concatenated = Concatenate()([second_image_hidden, LSTM_hidden_layer])
 	else:
-		concatenated = Add()([second_image_hidden, first_noise_hidden, LSTM_hidden_layer])
+		concatenated = Concatenate()([second_image_hidden, first_noise_hidden, LSTM_hidden_layer])
 
 	first_hidden = Dense(256, activation = "relu")(concatenated)
 	first_hidden = Dropout(0.5)(first_hidden)
@@ -112,6 +117,7 @@ def model_creator():
 	model.compile(loss = 'categorical_crossentropy', optimizer = optimizer, metrics = ['accuracy'])
 	return model
 
+# This outputs a list of 50
 def predict(image, n, idx2word):
 	orig_lstm = np.zeros((input_words_image,))
 	for i in range(input_words_image):
@@ -123,6 +129,7 @@ def predict(image, n, idx2word):
 	
 	return " ".join([idx2word[i] for i in orig_lstm])
 
+# amount is the number of memes
 def predict_group(amount):
 	for i in range(amount):
 		new_sample_z = sample_z(1, input_noise_size)[0]
@@ -151,23 +158,12 @@ class Histories(keras.callbacks.Callback):
 
 links, cleaned, images, vocabulary, word2idx, idx2word, vocab_embeddings, word2vec_model = initializer()
 
-generator = model_creator() #the inputs in order are images, noise, and lstm input
-data_generator = data_creator(cleaned, images,word2idx, 128)
+print(vocab_embeddings)
 
-# if add_noise:
-# 	generator.layers[5].set_weights([vocab_embeddings])
-# 	generator.layers[5].trainable = False
-# else:
-# 	generator.layers[4].set_weights([vocab_embeddings])
-# 	generator.layers[4].trainable = False
+# generator = model_creator() #the inputs in order are images, noise, and lstm input
+# data_generator = data_creator(cleaned, images,word2idx, 128)
 
-# print(generator.summary())
-histories = Histories()
+# histories = Histories()
+
 # this takes in a generator and returns the histories of the model
-generator.fit_generator(data_generator, steps_per_epoch = 3000, epochs = 15, callbacks = [histories])
-
-'''
-#TODO
-- create some functions to predict the words given an image and some noise
-- use generator.fit_generator() to fit the model
-'''
+# generator.fit_generator(data_generator, steps_per_epoch = 3000, epochs = 15, callbacks = [histories])
